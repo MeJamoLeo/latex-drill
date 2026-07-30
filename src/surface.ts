@@ -34,8 +34,13 @@ const SRC_SIZE = 20;
 const SRC_W = SRC_SIZE * 0.6;
 const ACTIVE_H = 44;
 
-const PROSE_SIZE = 11.5;
-const PREVIEW_SIZE = 15;
+const PROSE_SIZE = 12.5;
+/**
+ * Same size as the active line — like the official Typing Practice, hierarchy
+ * between "now" and "next" is carried by opacity alone, not by font size (two
+ * sizes read as two different UI elements instead of one flowing text).
+ */
+const PREVIEW_SIZE = SRC_SIZE;
 const STATS_H = 26;
 
 /** Colours chosen to stay legible against both the light and dark Raycast themes. */
@@ -74,8 +79,10 @@ export type SurfaceInput = {
   surplus: string;
   /** Untyped remainder of the active line. */
   graySrc: string;
-  /** The next line's goal, shown faintly below. */
-  nextGoal?: string;
+  /** Goals of the lines still to come, nearest first — drawn in a fading ladder. */
+  upcoming: string[];
+  /** True for a couple of frames right after a line clears. */
+  flash?: boolean;
   stats: Stats;
   width: number;
   height: number;
@@ -136,7 +143,7 @@ function image(x: number, y: number, w: number, h: number, base64: string): stri
 }
 
 export function renderSurface(input: SurfaceInput): string {
-  const { prose, docPng, fragPng, greenSrc, surplus, graySrc, nextGoal, stats, width, height } = input;
+  const { prose, docPng, fragPng, greenSrc, surplus, graySrc, upcoming, flash, stats, width, height } = input;
   const parts: string[] = [];
   const availW = width - MARGIN_X * 2;
 
@@ -166,7 +173,9 @@ export function renderSurface(input: SurfaceInput): string {
   // The active line starts right under the prose and DESCENDS as the document
   // grows above it — like typing at the end of a page. Once it reaches its
   // floor it stays put and the document tail-crops instead.
-  const previewH = nextGoal !== undefined && !stats.finished ? PREVIEW_SIZE + 14 : 0;
+  // Reserve at least one upcoming row below the active line; the fading ladder
+  // then fills whatever space actually remains.
+  const previewH = upcoming.length > 0 && !stats.finished ? PREVIEW_SIZE + 14 : 0;
   const maxActiveTop = height - MARGIN_Y - STATS_H - previewH - ACTIVE_H;
 
   const doc = docPng ? loadPng(docPng) : null;
@@ -181,19 +190,21 @@ export function renderSurface(input: SurfaceInput): string {
   }
 
   if (stats.finished) {
+    // The score must not depend on the final document compile having succeeded.
+    let scoreY = height / 2;
     if (doc) {
-      // Finished: the document takes centre stage with the score under it.
       const scale = Math.min(availW / doc.w, (height - MARGIN_Y * 2 - 44) / doc.h, 1);
       const w = doc.w * scale;
       const h = doc.h * scale;
       const top = Math.max(y, (height - h - 44) / 2);
       parts.push(image(MARGIN_X, top, w, h, doc.base64));
-      const score = `${stats.wpm} WPM ・ 正確さ ${stats.accuracy}% ・ ${stats.seconds.toFixed(1)}秒`;
-      parts.push(
-        `<text x="${width / 2}" y="${(top + h + 32).toFixed(1)}" fill="${C.correct}" text-anchor="middle" ` +
-          `font-family='${UI_FONT}' font-size="16">${escapeXml(score)}</text>`,
-      );
+      scoreY = top + h + 32;
     }
+    const score = `${stats.wpm} WPM ・ 正確さ ${stats.accuracy}% ・ ${stats.seconds.toFixed(1)}秒`;
+    parts.push(
+      `<text x="${width / 2}" y="${scoreY.toFixed(1)}" fill="${C.correct}" text-anchor="middle" ` +
+        `font-family='${UI_FONT}' font-size="16">${escapeXml(score)}</text>`,
+    );
     const svgDone =
       `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
       `width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}</svg>`;
@@ -206,6 +217,20 @@ export function renderSurface(input: SurfaceInput): string {
     parts.push(image(MARGIN_X, activeTop - 12 - docH, docW, docH, doc.base64));
   }
   const statsTop = height - MARGIN_Y - STATS_H + 10;
+
+  // ---- line-clear flash ------------------------------------------------------
+  // Two-frame celebration: a soft green wash behind the play row plus a bright
+  // seam under the document — the freshly committed line literally glows.
+  if (flash) {
+    parts.push(
+      `<rect x="${MARGIN_X - 10}" y="${activeTop - 4}" width="${availW + 20}" height="${ACTIVE_H + 8}" ` +
+        `rx="8" fill="${C.correct}" opacity="0.10"/>`,
+    );
+    parts.push(
+      `<rect x="${MARGIN_X}" y="${(activeTop - 10).toFixed(1)}" width="${availW}" height="2.5" rx="1.25" ` +
+        `fill="${C.correct}" opacity="0.55"/>`,
+    );
+  }
 
   // ---- active line: [frag][green][red surplus][caret][grey] -----------------
   const rowMid = activeTop + ACTIVE_H / 2;
@@ -226,8 +251,13 @@ export function renderSurface(input: SurfaceInput): string {
   }
 
   if (greenSrc.length > 0) {
-    parts.push(text(x, srcBaseline, greenSrc, SRC_SIZE, C.correct));
-    x += greenSrc.length * SRC_W;
+    // Clamp the green run so it can never push the caret off-canvas: keep the
+    // TAIL (the part nearest the caret), elide the head.
+    const reserved = (surplus.length + 10) * SRC_W;
+    const room = Math.max(4, Math.floor((width - MARGIN_X - x - reserved) / SRC_W));
+    const shown = greenSrc.length > room ? "…" + greenSrc.slice(greenSrc.length - room + 1) : greenSrc;
+    parts.push(text(x, srcBaseline, shown, SRC_SIZE, C.correct));
+    x += shown.length * SRC_W;
   }
 
   for (const ch of surplus) {
@@ -251,18 +281,39 @@ export function renderSurface(input: SurfaceInput): string {
     parts.push(text(x, srcBaseline, shown, SRC_SIZE, C.pending));
   }
 
-  // ---- next line preview ----------------------------------------------------
-  if (nextGoal !== undefined && previewH > 0) {
-    const py = activeTop + ACTIVE_H + PREVIEW_SIZE + 2;
-    const room = Math.floor(availW / (PREVIEW_SIZE * 0.6));
-    const shown = nextGoal.length > room ? nextGoal.slice(0, room - 1) + "…" : nextGoal;
-    parts.push(text(MARGIN_X, py, shown, PREVIEW_SIZE, C.pending, 0.45));
+  // ---- upcoming lines: a fading ladder --------------------------------------
+  // A typing game needs the road ahead visible. Every remaining line is drawn,
+  // fading with distance, until the space above the stats strip runs out — the
+  // closest line is clearly readable, the far ones are just "there's more".
+  if (upcoming.length > 0) {
+    const ROW_H = PREVIEW_SIZE + 10;
+    const cols = Math.floor(availW / (PREVIEW_SIZE * 0.6));
+    let uy = activeTop + ACTIVE_H + PREVIEW_SIZE + 2;
+    // The floor accounts for glyph descent, so the last row's tails cannot
+    // brush the stats strip.
+    const floor = height - MARGIN_Y - STATS_H - PREVIEW_SIZE * 0.3;
+    for (let i = 0; i < upcoming.length && uy < floor; i++) {
+      const opacity = Math.max(0.14, 0.5 - i * 0.09);
+      const line = upcoming[i];
+      const shown = line.length > cols ? line.slice(0, cols - 1) + "…" : line;
+      parts.push(text(MARGIN_X, uy, shown, PREVIEW_SIZE, C.pending, opacity));
+      uy += ROW_H;
+    }
   }
 
   // ---- stats strip ----------------------------------------------------------
+  // COMBO escalates in tiers so a streak feels like something to protect.
   const sy = statsTop + 8;
   if (stats.combo >= 2) {
-    parts.push(text(MARGIN_X, sy, `COMBO ${stats.combo}`, 12, C.combo, 1, UI_FONT));
+    const tier =
+      stats.combo >= 50
+        ? { size: 15, color: "#ef4444", label: `🔥COMBO ${stats.combo}` }
+        : stats.combo >= 25
+          ? { size: 14, color: "#f97316", label: `COMBO ${stats.combo}` }
+          : stats.combo >= 10
+            ? { size: 13, color: C.combo, label: `COMBO ${stats.combo}` }
+            : { size: 12, color: C.stats, label: `COMBO ${stats.combo}` };
+    parts.push(text(MARGIN_X, sy, tier.label, tier.size, tier.color, 1, UI_FONT));
   }
   parts.push(
     text(MARGIN_X + 110, sy, `行 ${stats.doneLines}/${stats.totalLines}`, 12, C.stats, 1, UI_FONT),

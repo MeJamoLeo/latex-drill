@@ -1,18 +1,20 @@
 /**
- * The real requirement for a live preview is not "valid LaTeX compiles" but
- * "every prefix of the reference compiles". So this walks the whole proof one
- * keystroke at a time and actually invokes latex on each repaired prefix,
- * reporting how many of them the compiler accepts.
+ * The real requirement for the metamorphosis pipeline is not "valid LaTeX
+ * compiles" but "every prefix of every reference compiles after repair" (the
+ * document images) and "every fragment body compiles" (the in-line
+ * transformations). Both are exercised here with the real latex binary, for
+ * every bundled problem — each new problem opens repair holes in new places.
  */
 import { repairForCompile, scan } from "../src/latex.ts";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { analyzeLines, fragmentBody } from "../src/precompile.ts";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
 import { join } from "path";
 
 const LATEX = "/opt/homebrew/bin/latex";
 const DIR = "/tmp/latex-prefix-test";
 
-const PREAMBLE = String.raw`\documentclass[preview,border=6pt,varwidth=130pt]{standalone}
+const PREAMBLE = String.raw`\documentclass[preview,border=6pt,varwidth=250pt]{standalone}
 \usepackage{amsmath,amssymb,amsthm}
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
@@ -70,31 +72,57 @@ for (const u of unit) {
   if (err && !u.mayFail) console.log(`       → ${err}`);
 }
 
-// --- the real test: every prefix of the reference ----------------------------
+// --- every problem: every prefix, every fragment -----------------------------
 
-const problem = JSON.parse(readFileSync("assets/problems/01-even-square.json", "utf8"));
-const reference: string = problem.reference;
+const problemDir = "assets/problems";
+const files = readdirSync(problemDir).filter((f) => f.endsWith(".json")).sort();
 
-console.log(`\n=== 全接頭辞テスト（${reference.length} 文字を3打鍵刻みで） ===`);
-const broken: { at: number; err: string; context: string }[] = [];
-let tested = 0;
-for (let i = 0; i <= reference.length; i += 3) {
-  tested++;
-  const repaired = repairForCompile(reference.slice(0, i));
-  const body = repaired.trim() === "" ? "\\phantom{x}" : repaired;
-  const err = compiles(body);
-  if (err) broken.push({ at: i, err, context: JSON.stringify(reference.slice(Math.max(0, i - 20), i)) });
-}
+let prefixNG = 0;
+let fragNG = 0;
 
-console.log(`compiled ${tested - broken.length}/${tested} prefixes`);
-if (broken.length > 0) {
-  console.log("\n通らなかった位置（先頭8件）:");
-  for (const b of broken.slice(0, 8)) {
-    console.log(`  @${String(b.at).padStart(3)} …${b.context}`);
-    console.log(`        ${b.err}`);
+for (const file of files) {
+  const problem = JSON.parse(readFileSync(join(problemDir, file), "utf8"));
+  const reference: string = problem.reference;
+  const lines: string[] = reference.split("\n");
+  const infos = analyzeLines(lines);
+
+  // Document prefixes: hard requirement — every 3rd keystroke state must render.
+  const broken: { at: number; err: string; context: string }[] = [];
+  let tested = 0;
+  for (let i = 0; i <= reference.length; i += 3) {
+    tested++;
+    const repaired = repairForCompile(reference.slice(0, i));
+    const body = repaired.trim() === "" ? "\\phantom{x}" : repaired;
+    const err = compiles(body);
+    if (err) broken.push({ at: i, err, context: JSON.stringify(reference.slice(Math.max(0, i - 20), i)) });
+  }
+  prefixNG += broken.length;
+
+  // Fragments: soft requirement — a failed fragment just means no in-line
+  // transformation at that boundary (the fallback keeps the green source), but
+  // a high failure count means the analysis is mis-slicing this problem.
+  let fragTotal = 0;
+  let fragBad = 0;
+  for (const info of infos) {
+    for (const b of info.boundaries) {
+      const body = fragmentBody(info, b);
+      if (body.length === 0) continue;
+      fragTotal++;
+      if (compiles(body)) fragBad++;
+    }
+  }
+  fragNG += fragBad;
+
+  console.log(
+    `\n=== ${file} (Lv${problem.level}) ===\n` +
+      `prefixes ${tested - broken.length}/${tested}  fragments ${fragTotal - fragBad}/${fragTotal}`,
+  );
+  for (const b of broken.slice(0, 5)) {
+    console.log(`  @${String(b.at).padStart(3)} …${b.context}\n        ${b.err}`);
   }
 }
 
 console.log(`\nscan sanity: ${JSON.stringify(scan("\\begin{align}$x{"))}`);
-console.log(failed === 0 && broken.length === 0 ? "\n全部通った" : `\n${failed} 件 FAIL / ${broken.length} 接頭辞 NG`);
-process.exit(failed === 0 && broken.length === 0 ? 0 : 1);
+const ok = failed === 0 && prefixNG === 0;
+console.log(ok ? `\n全部通った（fragment 失敗 ${fragNG} 件は許容）` : `\n${failed} unit FAIL / ${prefixNG} prefix NG`);
+process.exit(ok ? 0 : 1);

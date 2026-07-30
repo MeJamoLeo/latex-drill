@@ -94,6 +94,71 @@ export function scan(src: string): Scan {
   return { openEnvironments, openBraces, openMath: math, unknownEnvironments };
 }
 
+/** Commands that demand two arguments — closing after one still fails. */
+const TWO_ARG_COMMANDS = /\\(frac|dfrac|tfrac|cfrac|binom|overset|underset|stackrel)(?![a-zA-Z])/g;
+
+/**
+ * If the text ends inside a two-argument command's argument list (e.g.
+ * `\frac{n(n+1`), closing braces is not enough — the command still lacks its
+ * second argument. Cut the whole invocation instead.
+ */
+function trimIncompleteTwoArg(src: string): string {
+  // Check every occurrence, earliest first: a complete inner command can hide
+  // inside an incomplete outer one (`\frac{\binom{2}{3}`), so inspecting only
+  // the last match would let the outer breakage through silently.
+  TWO_ARG_COMMANDS.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = TWO_ARG_COMMANDS.exec(src))) {
+    if (argsIncompleteAt(src, m.index + m[0].length)) return src.slice(0, m.index);
+  }
+  return src;
+}
+
+/** True when a two-arg command whose arguments begin at `argsStart` never gets both. */
+function argsIncompleteAt(src: string, argsStart: number): boolean {
+  let i = argsStart;
+  for (let groups = 0; groups < 2; groups++) {
+    while (i < src.length && /\s/.test(src[i])) i++;
+    if (i >= src.length) return true; // ran out mid-arguments
+    if (src[i] !== "{") {
+      // `\frac12`-style single-token argument.
+      if (src[i] === "\\") {
+        let j = i + 1;
+        while (j < src.length && /[a-zA-Z]/.test(src[j])) j++;
+        i = j;
+      } else {
+        i++;
+      }
+      continue;
+    }
+    // Brace group with nesting.
+    let depth = 0;
+    let j = i;
+    for (; j < src.length; j++) {
+      const c = src[j];
+      if (c === "\\") {
+        j++;
+        continue;
+      }
+      if (c === "{") depth++;
+      else if (c === "}") {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    if (depth !== 0 || j >= src.length) return true; // unclosed group
+    i = j + 1;
+  }
+  return false; // both arguments complete
+}
+
+/** `\left` needs a matching `\right` before math or the environment closes. */
+function unbalancedLefts(src: string): number {
+  const lefts = src.match(/\\left(?![a-zA-Z])/g)?.length ?? 0;
+  const rights = src.match(/\\right(?![a-zA-Z])/g)?.length ?? 0;
+  return Math.max(0, lefts - rights);
+}
+
 /**
  * Drop a trailing fragment that cannot be repaired into valid input.
  *
@@ -124,6 +189,14 @@ function trimTrailingFragment(src: string): string {
   // Subscript or superscript with nothing to apply to.
   out = out.replace(/[_^]\s*$/, "");
 
+  // A two-argument command still waiting for arguments. Cutting one may expose
+  // another (`\frac{\frac{a`), so iterate to a fixpoint.
+  for (let guard = 0; guard < 8; guard++) {
+    const next = trimIncompleteTwoArg(out);
+    if (next === out) break;
+    out = next.replace(/\s+$/, "");
+  }
+
   return out.replace(/\s+$/, "");
 }
 
@@ -151,6 +224,10 @@ export function repairForCompile(src: string): string {
   // Close in the reverse of the order things were opened: braces and math sit
   // inside the innermost environment.
   if (s.openBraces > 0) body += "}".repeat(s.openBraces);
+
+  // A dangling \left must be resolved while still inside math mode.
+  const lefts = unbalancedLefts(body);
+  if (lefts > 0) body += " \\right.".repeat(lefts);
 
   // A math mode opened but not written into needs something between the
   // delimiters: closing `$` straight after `$` just reads as a `$$` opener.

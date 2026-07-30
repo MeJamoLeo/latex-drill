@@ -51,6 +51,10 @@ function isStable(prefix: string): boolean {
   // A trailing control word compiles only if it happens to take no argument;
   // conservatively wait for the next boundary instead of guessing.
   if (/\\[a-zA-Z]+$/.test(prefix)) return false;
+  // A \left without its \right cannot stand alone in a fragment.
+  const lefts = prefix.match(/\\left(?![a-zA-Z])/g)?.length ?? 0;
+  const rights = prefix.match(/\\right(?![a-zA-Z])/g)?.length ?? 0;
+  if (lefts !== rights) return false;
   return true;
 }
 

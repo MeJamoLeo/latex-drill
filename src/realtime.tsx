@@ -52,8 +52,30 @@ export default function Command() {
   const correctChars = useRef(0);
   const typedChars = useRef(0);
   const combo = useRef(0);
+  /** True for ~two frames after a line clears — drives the celebration flash. */
+  const [flash, setFlash] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const finished = doneCount >= lines.length;
+
+  // The clock and WPM should keep moving while the player thinks; without this
+  // they only advance on keystrokes and the timer appears frozen.
+  // INVARIANT: startedAt.current is only ever mutated inside handlers that also
+  // call a state setter in the same tick (onType/reset), which is what makes a
+  // ref read in this dependency array re-evaluate. Keep it that way.
+  useEffect(() => {
+    if (startedAt.current === null || finished) return;
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, [startedAt.current !== null, finished]);
+
+  // A pending flash timeout must not outlive the component.
+  useEffect(
+    () => () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    },
+    [],
+  );
 
   // ---- precompile pipeline ---------------------------------------------------
   // Every reachable image (line fragments, cumulative documents) is compiled in
@@ -124,6 +146,13 @@ export default function Command() {
     // Fresh keys that could not be consumed are mistakes.
     if (added > 0 && stream.length > 0) combo.current = 0;
 
+    // A cleared line earns a two-frame flash.
+    if (d > doneCount) {
+      setFlash(true);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlash(false), 190);
+    }
+
     setDoneCount(d);
     setPos(p);
     setSurplus(stream);
@@ -180,12 +209,9 @@ export default function Command() {
     }
 
     const goal = finished ? "" : infos[doneCount].goal;
-    let nextGoal: string | undefined;
-    for (let li = doneCount + 1; li < lines.length; li++) {
-      if (infos[li].goal.length > 0) {
-        nextGoal = infos[li].goal;
-        break;
-      }
+    const upcoming: string[] = [];
+    for (let li = doneCount + 1; li < lines.length && upcoming.length < 10; li++) {
+      if (infos[li].goal.length > 0) upcoming.push(infos[li].goal);
     }
 
     return renderSurface({
@@ -195,7 +221,8 @@ export default function Command() {
       greenSrc: goal.slice(fragBoundary, pos),
       surplus,
       graySrc: goal.slice(pos),
-      nextGoal,
+      upcoming,
+      flash,
       width: SURFACE_W,
       height: SURFACE_H,
       stats: {
@@ -209,36 +236,21 @@ export default function Command() {
       },
     });
     // tick keeps the surface in step with the results map and ref counters
-  }, [lines, infos, doneCount, pos, surplus, tick, finished, problem]);
+  }, [lines, infos, doneCount, pos, surplus, tick, finished, problem, flash]);
 
   return (
+    // As close to the native Typing Practice chrome as the extension API allows:
+    // no inset, no dropdown, an empty placeholder — the search bar row remains
+    // (List/Grid require it; Detail takes no keyboard input) but stays silent.
     <Grid
       columns={1}
       aspectRatio="16/9"
       fit={Grid.Fit.Contain}
-      inset={Grid.Inset.Small}
       filtering={false}
       searchText={ZWSP.repeat(sentinels) + surplus}
       onSearchTextChange={onType}
-      searchBarPlaceholder={finished ? "完成！ ⌘R でもう一回" : "ここに打つ"}
+      searchBarPlaceholder={finished ? "完成！ ⌘R でもう一回" : " "}
       navigationTitle={`${problem.title} — ${doneCount}/${lines.length} 行${wpm ? ` ・ ${wpm} WPM` : ""}`}
-      searchBarAccessory={
-        <Grid.Dropdown
-          tooltip="問題"
-          value={problem.id}
-          onChange={(id) => {
-            const next = problems.find((p) => p.id === id);
-            if (next) {
-              setProblem(next);
-              reset();
-            }
-          }}
-        >
-          {problems.map((p) => (
-            <Grid.Dropdown.Item key={p.id} value={p.id} title={`Lv${p.level} ${p.title}`} />
-          ))}
-        </Grid.Dropdown>
-      }
     >
       <Grid.Item
         content={surface}
@@ -251,6 +263,18 @@ export default function Command() {
               shortcut={{ modifiers: ["cmd"], key: "r" }}
               onAction={reset}
             />
+            <ActionPanel.Submenu title="問題を選ぶ" icon={Icon.List} shortcut={{ modifiers: ["cmd"], key: "p" }}>
+              {problems.map((p) => (
+                <Action
+                  key={p.id}
+                  title={`Lv${p.level}  ${p.title}`}
+                  onAction={() => {
+                    setProblem(p);
+                    reset();
+                  }}
+                />
+              ))}
+            </ActionPanel.Submenu>
             <Action
               title="この行をスキップ"
               icon={Icon.ArrowRight}

@@ -56,12 +56,17 @@ export async function renderTex(
     await execFileAsync(LATEX, ["-interaction=nonstopmode", "-halt-on-error", "-no-shell-escape", "doc.tex"], {
       cwd: dir,
     });
+    // Typeset output is THE reward, so it gets the highest-contrast colour the
+    // current theme allows — brighter than every grey in the UI. Baked at
+    // compile time; a mid-session theme switch shows stale colours until the
+    // problem is reselected, which is acceptable.
+    const fg = environment.appearance === "dark" ? "rgb 0.93 0.93 0.97" : "rgb 0.10 0.10 0.16";
     await execFileAsync(
       DVIPNG,
       // The display runs at backingScaleFactor 1, so points map to pixels and the
       // image wants to arrive at roughly its final size. 145 dpi over 250pt lands
       // near 500px wide — a comfortable read across the full-width strip.
-      ["-D", "145", "-T", "tight", "-bg", "Transparent", "-fg", "rgb 0.58 0.58 0.62", "-o", png, dvi],
+      ["-D", "145", "-T", "tight", "-bg", "Transparent", "-fg", fg, "-o", png, dvi],
       { cwd: dir },
     );
     if (maxHeightPx !== undefined && pngHeight(png) > maxHeightPx) {

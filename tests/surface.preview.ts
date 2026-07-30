@@ -54,7 +54,7 @@ function typeset(body: string, tag: string, maxHeightPx?: number): string | unde
   }
 }
 
-const problem = JSON.parse(readFileSync("assets/problems/01-even-square.json", "utf8"));
+const problem = JSON.parse(readFileSync("assets/problems/02-even-square.json", "utf8"));
 const lines: string[] = problem.reference.split("\n");
 const infos = analyzeLines(lines);
 
@@ -120,12 +120,9 @@ for (const s of scenarios) {
   }
 
   const goal = finished ? "" : infos[s.doneCount].goal;
-  let nextGoal: string | undefined;
-  for (let li = s.doneCount + 1; li < lines.length; li++) {
-    if (infos[li].goal.length > 0) {
-      nextGoal = infos[li].goal;
-      break;
-    }
+  const upcoming: string[] = [];
+  for (let li = s.doneCount + 1; li < lines.length && upcoming.length < 10; li++) {
+    if (infos[li].goal.length > 0) upcoming.push(infos[li].goal);
   }
 
   const uri = renderSurface({
@@ -135,7 +132,7 @@ for (const s of scenarios) {
     greenSrc: goal.slice(fragBoundary, s.pos),
     surplus: s.surplus,
     graySrc: goal.slice(s.pos),
-    nextGoal,
+    upcoming,
     stats: s.stats,
     width: 720,
     height: 405,

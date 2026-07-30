@@ -1,14 +1,29 @@
 {
-  "id": "01-even-square",
-  "level": 1,
+  "id": "02-even-square",
+  "level": 2,
   "title": "The square of an even integer is even",
   "prose": "Theorem. Let n be an even integer. Then n squared is even.\n\nProof. Since n is even, there exists an integer k such that n = 2k. Then n squared equals (2k) squared, which equals 4k squared, which equals 2 times (2k squared). Since 2k squared is an integer, n squared is twice an integer, hence even.",
   "reference": "\\begin{theorem}\nLet $n$ be an even integer. Then $n^2$ is even.\n\\end{theorem}\n\n\\begin{proof}\nSince $n$ is even, there exists an integer $k$ such that $n = 2k$. Then\n\\begin{align}\n  n^2 &= (2k)^2 \\\\\n      &= 4k^2 \\\\\n      &= 2(2k^2).\n\\end{align}\nSince $2k^2 \\in \\mathbb{Z}$, the integer $n^2$ is twice an integer, hence even.\n\\end{proof}",
   "required": [
-    { "label": "theorem 環境", "pattern": "\\begin{theorem}" },
-    { "label": "proof 環境", "pattern": "\\begin{proof}" },
-    { "label": "align 環境", "pattern": "\\begin{align}" },
-    { "label": "整数の集合 Z", "pattern": "\\mathbb{Z}" },
-    { "label": "所属 \\in", "pattern": "\\in" }
+    {
+      "label": "theorem 環境",
+      "pattern": "\\begin{theorem}"
+    },
+    {
+      "label": "proof 環境",
+      "pattern": "\\begin{proof}"
+    },
+    {
+      "label": "align 環境",
+      "pattern": "\\begin{align}"
+    },
+    {
+      "label": "整数の集合 Z",
+      "pattern": "\\mathbb{Z}"
+    },
+    {
+      "label": "所属 \\in",
+      "pattern": "\\in"
+    }
   ]
 }
