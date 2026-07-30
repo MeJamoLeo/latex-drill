@@ -1,0 +1,12 @@
+{
+  "id": "11-distance-formula",
+  "level": 1,
+  "title": "The distance formula",
+  "prose": "Theorem. The distance between the points (x₁, y₁) and (x₂, y₂) is d, the square root of (x₂ − x₁)² plus (y₂ − y₁)².",
+  "reference": "\\begin{theorem}\nThe distance between $(x_1, y_1)$ and $(x_2, y_2)$ is\n\\begin{equation}\n  d = \\sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}.\n\\end{equation}\n\\end{theorem}",
+  "required": [
+    { "label": "下付き添字", "pattern": "x_1" },
+    { "label": "平方根 \\sqrt", "pattern": "\\sqrt" },
+    { "label": "equation 環境", "pattern": "\\begin{equation}" }
+  ]
+}

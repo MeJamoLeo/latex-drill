@@ -1,13 +1,25 @@
 {
-  "id": "05-limit-epsilon",
+  "id": "40-limit-epsilon",
   "level": 4,
   "title": "The limit of 1/n is zero",
   "prose": "Theorem. The limit of 1/n as n tends to infinity is 0. Proof. Let ε > 0. Choose a natural number N with N > 1/ε. For all n ≥ N, the distance |1/n − 0| = 1/n ≤ 1/N < ε, hence the limit is 0.",
   "reference": "\\begin{theorem}\n$\\lim_{n \\to \\infty} \\frac{1}{n} = 0$.\n\\end{theorem}\n\n\\begin{proof}\nLet $\\varepsilon > 0$. Choose $N \\in \\mathbb{N}$ with $N > \\frac{1}{\\varepsilon}$.\nFor all $n \\geq N$,\n\\begin{align}\n  \\left| \\frac{1}{n} - 0 \\right| &= \\frac{1}{n} \\leq \\frac{1}{N} < \\varepsilon,\n\\end{align}\nhence the limit is $0$.\n\\end{proof}",
   "required": [
-    { "label": "極限 \\lim と添字", "pattern": "\\lim_{n \\to \\infty}" },
-    { "label": "イプシロン", "pattern": "\\varepsilon" },
-    { "label": "サイズ可変括弧", "pattern": "\\left|" },
-    { "label": "不等号 \\leq / \\geq", "pattern": "\\leq" }
+    {
+      "label": "極限 \\lim と添字",
+      "pattern": "\\lim_{n \\to \\infty}"
+    },
+    {
+      "label": "イプシロン",
+      "pattern": "\\varepsilon"
+    },
+    {
+      "label": "サイズ可変括弧",
+      "pattern": "\\left|"
+    },
+    {
+      "label": "不等号 \\leq / \\geq",
+      "pattern": "\\leq"
+    }
   ]
 }

@@ -1,0 +1,14 @@
+{
+  "id": "31-de-morgan",
+  "level": 3,
+  "title": "De Morgan's law for sets",
+  "prose": "Theorem. For sets A, B contained in X, the complement of A ∪ B equals the intersection of the complements. Proof. For x in X: x is in the complement of A ∪ B iff x is not in A ∪ B, iff x is in neither A nor B, iff x is in the intersection of the complements.",
+  "reference": "\\begin{theorem}\nFor sets $A, B \\subseteq X$,\n$(A \\cup B)^{c} = A^{c} \\cap B^{c}$.\n\\end{theorem}\n\n\\begin{proof}\nFor $x \\in X$,\n\\begin{align}\n  x \\in (A \\cup B)^{c} &\\iff x \\notin A \\cup B \\\\\n  &\\iff x \\notin A \\text{ and } x \\notin B \\\\\n  &\\iff x \\in A^{c} \\cap B^{c}.\n\\end{align}\n\\end{proof}",
+  "required": [
+    { "label": "和集合 \\cup", "pattern": "\\cup" },
+    { "label": "共通部分 \\cap", "pattern": "\\cap" },
+    { "label": "部分集合 \\subseteq", "pattern": "\\subseteq" },
+    { "label": "同値 \\iff", "pattern": "\\iff" },
+    { "label": "テキスト挿入 \\text", "pattern": "\\text" }
+  ]
+}

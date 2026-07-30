@@ -1,0 +1,12 @@
+{
+  "id": "43-sine-addition",
+  "level": 4,
+  "title": "The addition formulas (sprint)",
+  "prose": "Theorem. For all angles α and β: sin(α + β) = sin α cos β + cos α sin β, and cos(α + β) = cos α cos β − sin α sin β.",
+  "reference": "\\begin{theorem}\nFor all $\\alpha, \\beta$,\n\\begin{align}\n  \\sin(\\alpha + \\beta) &= \\sin \\alpha \\cos \\beta + \\cos \\alpha \\sin \\beta, \\\\\n  \\cos(\\alpha + \\beta) &= \\cos \\alpha \\cos \\beta - \\sin \\alpha \\sin \\beta.\n\\end{align}\n\\end{theorem}",
+  "required": [
+    { "label": "アルファ \\alpha", "pattern": "\\alpha" },
+    { "label": "ベータ \\beta", "pattern": "\\beta" },
+    { "label": "加法定理の右辺", "pattern": "\\sin \\alpha \\cos \\beta" }
+  ]
+}

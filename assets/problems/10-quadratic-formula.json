@@ -1,0 +1,29 @@
+{
+  "id": "10-quadratic-formula",
+  "level": 1,
+  "title": "The quadratic formula",
+  "prose": "Theorem. If ax² + bx + c = 0 and a ≠ 0, then x equals minus b, plus or minus the square root of b² − 4ac, all divided by 2a.",
+  "reference": "\\begin{theorem}\nIf $ax^2 + bx + c = 0$ and $a \\neq 0$, then\n\\begin{equation}\n  x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}.\n\\end{equation}\n\\end{theorem}",
+  "required": [
+    {
+      "label": "equation 環境",
+      "pattern": "\\begin{equation}"
+    },
+    {
+      "label": "分数 \\frac",
+      "pattern": "\\frac"
+    },
+    {
+      "label": "平方根 \\sqrt",
+      "pattern": "\\sqrt"
+    },
+    {
+      "label": "プラスマイナス \\pm",
+      "pattern": "\\pm"
+    },
+    {
+      "label": "不等号 \\neq",
+      "pattern": "\\neq"
+    }
+  ]
+}

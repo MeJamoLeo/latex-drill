@@ -1,0 +1,13 @@
+{
+  "id": "23-geometric-series",
+  "level": 2,
+  "title": "The geometric series sum",
+  "prose": "Theorem. For r ≠ 1, the sum Sₙ of r⁰ through rⁿ⁻¹ equals (1 − rⁿ)/(1 − r). Proof. Subtracting rSₙ from Sₙ, all middle terms cancel: Sₙ − rSₙ = (1 + r + ... + rⁿ⁻¹) − (r + r² + ... + rⁿ) = 1 − rⁿ. Dividing by 1 − r gives the claim.",
+  "reference": "\\begin{theorem}\nFor $r \\neq 1$,\n\\begin{equation}\n  S_n = \\sum_{k=0}^{n-1} r^k = \\frac{1 - r^n}{1 - r}.\n\\end{equation}\n\\end{theorem}\n\n\\begin{proof}\nSince\n\\begin{align}\n  S_n - r S_n &= (1 + r + \\cdots + r^{n-1}) - (r + r^2 + \\cdots + r^n) \\\\\n              &= 1 - r^n,\n\\end{align}\ndividing by $1 - r$ gives the claim.\n\\end{proof}",
+  "required": [
+    { "label": "総和 \\sum と上下添字", "pattern": "\\sum_{k=0}^{n-1}" },
+    { "label": "波括弧付き上付き", "pattern": "r^{n-1}" },
+    { "label": "積の省略 \\cdots", "pattern": "\\cdots" },
+    { "label": "不等号 \\neq", "pattern": "\\neq" }
+  ]
+}

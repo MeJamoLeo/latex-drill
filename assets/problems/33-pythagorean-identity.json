@@ -1,0 +1,13 @@
+{
+  "id": "33-pythagorean-identity",
+  "level": 3,
+  "title": "The Pythagorean identity",
+  "prose": "Theorem. For every angle θ, sin²θ + cos²θ = 1. Proof. The point (cos θ, sin θ) lies on the unit circle, whose equation is x² + y² = 1; substituting gives the identity.",
+  "reference": "\\begin{theorem}\nFor all $\\theta$, $\\sin^2 \\theta + \\cos^2 \\theta = 1$.\n\\end{theorem}\n\n\\begin{proof}\nThe point $(\\cos \\theta, \\sin \\theta)$ lies on the unit circle\n$x^2 + y^2 = 1$; substituting the coordinates gives\n\\begin{align}\n  \\cos^2 \\theta + \\sin^2 \\theta &= 1.\n\\end{align}\n\\end{proof}",
+  "required": [
+    { "label": "正弦 \\sin", "pattern": "\\sin" },
+    { "label": "余弦 \\cos", "pattern": "\\cos" },
+    { "label": "シータ \\theta", "pattern": "\\theta" },
+    { "label": "関数の2乗 \\sin^2", "pattern": "\\sin^2" }
+  ]
+}

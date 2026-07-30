@@ -1,5 +1,5 @@
 {
-  "id": "02-even-square",
+  "id": "20-even-square",
   "level": 2,
   "title": "The square of an even integer is even",
   "prose": "Theorem. Let n be an even integer. Then n squared is even.\n\nProof. Since n is even, there exists an integer k such that n = 2k. Then n squared equals (2k) squared, which equals 4k squared, which equals 2 times (2k squared). Since 2k squared is an integer, n squared is twice an integer, hence even.",

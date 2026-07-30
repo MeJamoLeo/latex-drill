@@ -1,0 +1,12 @@
+{
+  "id": "41-derivative-x2",
+  "level": 4,
+  "title": "The derivative of x², from the definition",
+  "prose": "Theorem. If f(x) = x², then f′(x) = 2x. Proof. By definition, f′(x) is the limit as h → 0 of ((x+h)² − x²)/h, which equals the limit of (2xh + h²)/h, which equals the limit of 2x + h, which equals 2x.",
+  "reference": "\\begin{theorem}\nIf $f(x) = x^2$, then $f'(x) = 2x$.\n\\end{theorem}\n\n\\begin{proof}\nBy definition,\n\\begin{align}\n  f'(x) &= \\lim_{h \\to 0} \\frac{(x+h)^2 - x^2}{h} \\\\\n        &= \\lim_{h \\to 0} \\frac{2xh + h^2}{h} \\\\\n        &= \\lim_{h \\to 0} (2x + h) \\\\\n        &= 2x.\n\\end{align}\n\\end{proof}",
+  "required": [
+    { "label": "極限 \\lim と添字", "pattern": "\\lim_{h \\to 0}" },
+    { "label": "分数 \\frac", "pattern": "\\frac" },
+    { "label": "微分のプライム", "pattern": "f'" }
+  ]
+}

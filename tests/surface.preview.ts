@@ -54,7 +54,7 @@ function typeset(body: string, tag: string, maxHeightPx?: number): string | unde
   }
 }
 
-const problem = JSON.parse(readFileSync("assets/problems/02-even-square.json", "utf8"));
+const problem = JSON.parse(readFileSync("assets/problems/20-even-square.json", "utf8"));
 const lines: string[] = problem.reference.split("\n");
 const infos = analyzeLines(lines);
 

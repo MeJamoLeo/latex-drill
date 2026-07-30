@@ -1,0 +1,13 @@
+{
+  "id": "32-infinitude-primes",
+  "level": 3,
+  "title": "There are infinitely many primes",
+  "prose": "Theorem. There are infinitely many primes. Proof. Suppose p₁, p₂, ..., pₙ are all the primes. Let N be their product plus one. Some prime p divides N, so p equals some pᵢ. But then p divides both N and N − 1, hence p divides 1 — a contradiction.",
+  "reference": "\\begin{theorem}\nThere are infinitely many primes.\n\\end{theorem}\n\n\\begin{proof}\nSuppose $p_1, p_2, \\ldots, p_n$ are all the primes. Let\n\\begin{equation}\n  N = p_1 p_2 \\cdots p_n + 1.\n\\end{equation}\nSome prime $p$ divides $N$, so $p = p_i$ for some $i$. But then\n$p \\mid N$ and $p \\mid N - 1$, hence $p \\mid 1$, a contradiction.\n\\end{proof}",
+  "required": [
+    { "label": "リスト省略 \\ldots", "pattern": "\\ldots" },
+    { "label": "積の省略 \\cdots", "pattern": "\\cdots" },
+    { "label": "整除 \\mid", "pattern": "\\mid" },
+    { "label": "下付き添字", "pattern": "p_i" }
+  ]
+}

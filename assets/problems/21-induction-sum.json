@@ -1,13 +1,25 @@
 {
-  "id": "03-induction-sum",
+  "id": "21-induction-sum",
   "level": 2,
   "title": "Sum of the first n integers, by induction",
   "prose": "Theorem. For all natural numbers n, the sum 1 + 2 + ... + n equals n(n+1)/2. Proof. For n = 1 both sides equal 1. Assume the claim holds for n. Then the sum up to n+1 equals n(n+1)/2 plus (n+1), which equals (n+1)(n+2)/2, completing the induction.",
   "reference": "\\begin{theorem}\nFor all $n \\in \\mathbb{N}$, $\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$.\n\\end{theorem}\n\n\\begin{proof}\nFor $n = 1$ both sides equal $1$. Assume the claim for $n$. Then\n\\begin{align}\n  \\sum_{i=1}^{n+1} i &= \\frac{n(n+1)}{2} + (n+1) \\\\\n                     &= \\frac{(n+1)(n+2)}{2},\n\\end{align}\ncompleting the induction.\n\\end{proof}",
   "required": [
-    { "label": "総和 \\sum と添字", "pattern": "\\sum_{i=1}^{n}" },
-    { "label": "自然数の集合", "pattern": "\\mathbb{N}" },
-    { "label": "align 環境", "pattern": "\\begin{align}" },
-    { "label": "分数 \\frac", "pattern": "\\frac" }
+    {
+      "label": "総和 \\sum と添字",
+      "pattern": "\\sum_{i=1}^{n}"
+    },
+    {
+      "label": "自然数の集合",
+      "pattern": "\\mathbb{N}"
+    },
+    {
+      "label": "align 環境",
+      "pattern": "\\begin{align}"
+    },
+    {
+      "label": "分数 \\frac",
+      "pattern": "\\frac"
+    }
   ]
 }

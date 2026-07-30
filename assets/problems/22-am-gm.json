@@ -1,0 +1,12 @@
+{
+  "id": "22-am-gm",
+  "level": 2,
+  "title": "The AM-GM inequality for two numbers",
+  "prose": "Theorem. For a, b ≥ 0, the arithmetic mean (a + b)/2 is at least the geometric mean √(ab). Proof. Since (√a − √b)² ≥ 0, expanding gives a − 2√(ab) + b ≥ 0, so a + b ≥ 2√(ab), and dividing by 2 gives the claim.",
+  "reference": "\\begin{theorem}\nFor $a, b \\geq 0$, $\\frac{a + b}{2} \\geq \\sqrt{ab}$.\n\\end{theorem}\n\n\\begin{proof}\nSince $(\\sqrt{a} - \\sqrt{b})^2 \\geq 0$,\n\\begin{align}\n  a - 2\\sqrt{ab} + b &\\geq 0 \\\\\n  a + b &\\geq 2\\sqrt{ab},\n\\end{align}\nand dividing by $2$ gives the claim.\n\\end{proof}",
+  "required": [
+    { "label": "不等号 \\geq", "pattern": "\\geq" },
+    { "label": "平方根 \\sqrt", "pattern": "\\sqrt{ab}" },
+    { "label": "align 環境", "pattern": "\\begin{align}" }
+  ]
+}

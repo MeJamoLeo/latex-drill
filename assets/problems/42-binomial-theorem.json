@@ -1,0 +1,12 @@
+{
+  "id": "42-binomial-theorem",
+  "level": 4,
+  "title": "The binomial theorem (sprint)",
+  "prose": "Theorem. For all natural numbers n, (x + y)ⁿ equals the sum over k from 0 to n of (n choose k) xᵏ yⁿ⁻ᵏ.",
+  "reference": "\\begin{theorem}\nFor all $n \\in \\mathbb{N}$,\n\\begin{equation}\n  (x + y)^n = \\sum_{k=0}^{n} \\binom{n}{k} x^{k} y^{n-k}.\n\\end{equation}\n\\end{theorem}",
+  "required": [
+    { "label": "二項係数 \\binom", "pattern": "\\binom{n}{k}" },
+    { "label": "総和 \\sum と添字", "pattern": "\\sum_{k=0}^{n}" },
+    { "label": "上付き添字の波括弧", "pattern": "y^{n-k}" }
+  ]
+}

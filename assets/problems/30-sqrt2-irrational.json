@@ -1,13 +1,25 @@
 {
-  "id": "04-sqrt2-irrational",
+  "id": "30-sqrt2-irrational",
   "level": 3,
   "title": "The square root of 2 is irrational",
   "prose": "Theorem. The square root of 2 is not rational. Proof. Suppose √2 = p/q with p, q coprime integers. Then 2q² = p², so p² is even, hence p = 2r for some integer r. Substituting, 2q² = 4r², so q² = 2r² is even — but then p and q are both even, contradicting coprimality.",
   "reference": "\\begin{theorem}\n$\\sqrt{2} \\notin \\mathbb{Q}$.\n\\end{theorem}\n\n\\begin{proof}\nSuppose $\\sqrt{2} = \\frac{p}{q}$ with $p, q \\in \\mathbb{Z}$ coprime. Then\n\\begin{align}\n  2q^2 &= p^2,\n\\end{align}\nso $p^2$ is even, hence $p = 2r$ for some $r \\in \\mathbb{Z}$. Then\n\\begin{align}\n  2q^2 &= 4r^2,\n\\end{align}\nso $q^2 = 2r^2$ is even, contradicting coprimality.\n\\end{proof}",
   "required": [
-    { "label": "非所属 \\notin", "pattern": "\\notin" },
-    { "label": "有理数の集合", "pattern": "\\mathbb{Q}" },
-    { "label": "整数の集合", "pattern": "\\mathbb{Z}" },
-    { "label": "平方根 \\sqrt", "pattern": "\\sqrt{2}" }
+    {
+      "label": "非所属 \\notin",
+      "pattern": "\\notin"
+    },
+    {
+      "label": "有理数の集合",
+      "pattern": "\\mathbb{Q}"
+    },
+    {
+      "label": "整数の集合",
+      "pattern": "\\mathbb{Z}"
+    },
+    {
+      "label": "平方根 \\sqrt",
+      "pattern": "\\sqrt{2}"
+    }
   ]
 }

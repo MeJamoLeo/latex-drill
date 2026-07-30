@@ -1,0 +1,12 @@
+{
+  "id": "24-arithmetic-recurrence",
+  "level": 2,
+  "title": "The arithmetic sequence, closed form (sprint)",
+  "prose": "Theorem. If a₁ = a and each term satisfies aₙ₊₁ = aₙ + d, then the general term is aₙ = a + (n − 1)d.",
+  "reference": "\\begin{theorem}\nIf $a_1 = a$ and $a_{n+1} = a_n + d$ for all $n \\geq 1$, then\n\\begin{equation}\n  a_n = a + (n - 1) d.\n\\end{equation}\n\\end{theorem}",
+  "required": [
+    { "label": "波括弧付き下付き", "pattern": "a_{n+1}" },
+    { "label": "漸化式の等号", "pattern": "a_{n+1} = a_n + d" },
+    { "label": "equation 環境", "pattern": "\\begin{equation}" }
+  ]
+}

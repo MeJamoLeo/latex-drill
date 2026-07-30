@@ -1,0 +1,13 @@
+{
+  "id": "50-triangle-inequality",
+  "level": 5,
+  "title": "The triangle inequality",
+  "prose": "Definition. For real x, |x| is x if x ≥ 0 and −x if x < 0. Theorem. For all real x, y: |x + y| ≤ |x| + |y|. Proof. From the definition, −|x| ≤ x ≤ |x| and likewise for y. Adding the two chains gives −(|x| + |y|) ≤ x + y ≤ |x| + |y|, hence |x + y| ≤ |x| + |y|.",
+  "reference": "\\begin{definition}\nFor $x \\in \\mathbb{R}$,\n\\begin{equation}\n  |x| =\n  \\begin{cases}\n    x & \\text{if } x \\geq 0 \\\\\n    -x & \\text{if } x < 0\n  \\end{cases}\n\\end{equation}\n\\end{definition}\n\n\\begin{theorem}\nFor all $x, y \\in \\mathbb{R}$, $|x + y| \\leq |x| + |y|$.\n\\end{theorem}\n\n\\begin{proof}\nFrom the definition, $-|x| \\leq x \\leq |x|$ and $-|y| \\leq y \\leq |y|$.\nAdding these,\n\\begin{align}\n  -(|x| + |y|) \\leq x + y \\leq |x| + |y|,\n\\end{align}\nhence $|x + y| \\leq |x| + |y|$.\n\\end{proof}",
+  "required": [
+    { "label": "definition 環境", "pattern": "\\begin{definition}" },
+    { "label": "場合分け cases", "pattern": "\\begin{cases}" },
+    { "label": "実数の集合", "pattern": "\\mathbb{R}" },
+    { "label": "テキスト挿入 \\text", "pattern": "\\text{if }" }
+  ]
+}
