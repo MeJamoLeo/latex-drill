@@ -1,186 +1,150 @@
 import { Action, ActionPanel, Grid, Icon } from "@raycast/api";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { loadProblems, type Problem } from "./problems";
-import { renderTex, type RenderResult } from "./render";
-import { repairForCompile } from "./latex";
-import { renderSurface } from "./surface";
-
-/**
- * Delay before the first compile of a typing burst. Once the drain loop below is
- * running it recompiles continuously, so this only trims wasted compiles at the
- * very start of a burst. The typing surface itself redraws on every keystroke.
- */
-const DEBOUNCE_MS = 150;
+import { loadProblems, type Problem } from "./problems.ts";
+import { renderTex, sweepStaleBuildDirs } from "./render.ts";
+import { analyzeLines, buildJobs, jobKey, goalOf } from "./precompile.ts";
+import { renderSurface } from "./surface.ts";
 
 /**
  * The whole game is one composed image inside a single Grid cell. Grid is used
  * instead of List because List always reserves a third of the window for the
- * item column, which this game has no use for — Grid with one column hands the
- * full window to the image while keeping the search bar as the typing input.
- * The cell is 16:9 (the only wide aspect Grid offers), so the canvas is too.
+ * item column; Grid with one column hands the full window to the image while
+ * keeping the search bar as the typing input. The cell is 16:9, so is the canvas.
  */
 const SURFACE_W = 720;
 const SURFACE_H = 405;
 
-/** Monotonic tag for goal compiles, so no two share a working directory. */
-let goalGeneration = 0;
+/** Zero-width space: the invisible content that keeps the search bar non-empty. */
+const ZWSP = "​";
 
-type Live = {
-  /** Last image that compiled successfully. Kept on screen through failures. */
-  png?: string;
-  /** True while the on-screen image is behind what has been typed. */
-  stale: boolean;
-  error?: string;
-  ms: number;
-};
-
-function firstDifference(typed: string, target: string): number | null {
-  const n = Math.min(typed.length, target.length);
-  for (let i = 0; i < n; i++) if (typed[i] !== target[i]) return i;
-  return typed.length > target.length ? target.length : null;
-}
+/** Tail-crop budgets for cumulative document images. */
+const DOC_MAX_H = 205;
+const FINAL_DOC_MAX_H = 300;
 
 export default function Command() {
   const problems = useMemo(() => loadProblems(), []);
   const [problem, setProblem] = useState<Problem>(problems[0]);
 
   const lines = useMemo(() => problem.reference.split("\n"), [problem]);
+  const infos = useMemo(() => analyzeLines(lines), [lines]);
+
   const [doneCount, setDoneCount] = useState(0);
-  const [typed, setTyped] = useState("");
-  const [live, setLive] = useState<Live>({ stale: false, ms: 0 });
-  /** The finished reference, typeset once per problem and shown until typing produces its own. */
-  const [goalPng, setGoalPng] = useState<string | undefined>(undefined);
-  // Bumped on every keystroke so elapsed-time figures refresh with the surface.
+  /** Consumed characters of the active line's goal. */
+  const [pos, setPos] = useState(0);
+  /**
+   * The search bar stays EMPTY except for mistakes: a correct keystroke is
+   * consumed instantly (the line transforms), a wrong one stays in the bar as
+   * red surplus so Backspace still works on it.
+   */
+  const [surplus, setSurplus] = useState("");
+  /**
+   * Raycast pops the view when Backspace lands on an EMPTY search bar — which
+   * would kill the game on a reflexive backspace. So the bar always carries an
+   * invisible zero-width-space sentinel: visually empty, never actually empty.
+   * The count alternates 1/2 so the controlled value always differs from what
+   * the bar holds after an edit, forcing Raycast to accept the reset.
+   */
+  const [sentinels, setSentinels] = useState(1);
+  // Bumped whenever a precompile job lands or a keystroke needs stats refreshed.
   const [tick, setTick] = useState(0);
 
   const startedAt = useRef<number | null>(null);
   const correctChars = useRef(0);
   const typedChars = useRef(0);
+  const combo = useRef(0);
 
   const finished = doneCount >= lines.length;
-  const target = finished ? "" : lines[doneCount];
-  // Leading indentation is display-only (the surface shows it greyed); what the
-  // player actually types starts at the first non-space character.
-  const goal = target.trimStart();
 
-  // Blank lines in the reference carry no keystrokes, so award them for free.
+  // ---- precompile pipeline ---------------------------------------------------
+  // Every reachable image (line fragments, cumulative documents) is compiled in
+  // play order the moment the problem is selected — the metamorphosis then never
+  // waits on latex. Results land in a map keyed by jobKey.
+  const resultsRef = useRef(new Map<string, string>());
+  const genRef = useRef(0);
+
   useEffect(() => {
-    if (!finished && target.trim() === "") setDoneCount((n) => n + 1);
-  }, [target, finished]);
+    const gen = ++genRef.current;
+    resultsRef.current = new Map();
+    const prefix = `pc${gen}-`;
+    sweepStaleBuildDirs(prefix);
 
-  // Typeset the finished reference once per problem: the pane shows the goal
-  // (dimmed) before any typing, so the player sees what they are building.
-  // Each compile gets its own generation-tagged dir — switching problems while a
-  // goal compile is in flight must not let two latex runs share doc.tex/doc.dvi.
-  useEffect(() => {
-    let cancelled = false;
-    const generation = ++goalGeneration;
-    setGoalPng(undefined);
-    void renderTex(problem.reference, problem, `goal-${generation}`).then((r) => {
-      if (!cancelled) setGoalPng(r.png);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [problem]);
-
-  // Only COMPLETED lines are typeset — the vertical layout keeps the line being
-  // typed as coloured source, and it flips into the typeset strip the moment it
-  // matches. Repair still closes whatever the completed prefix leaves open
-  // (environments, math, braces), so every completion compiles.
-  const body = useMemo(
-    () => repairForCompile(lines.slice(0, doneCount).join("\n")).trim(),
-    [lines, doneCount],
-  );
-
-  // The compile pipeline is a serialized drain loop, NOT debounce-and-discard.
-  // The first version cancelled the in-flight compile on every keystroke, which
-  // meant a result only ever landed after ~500ms of complete silence — and a
-  // typing game never goes silent, so the pane stayed empty for whole lines.
-  // Here exactly one compile runs at a time; when it lands it is shown even if
-  // already behind (marked stale), and the loop immediately recompiles until it
-  // has caught up with what is typed.
-  const bodyRef = useRef("");
-  const problemRef = useRef(problem);
-  const runningRef = useRef(false);
-  /** Tail-crop budget for the typeset strip: taller once the proof is finished. */
-  const maxHRef = useRef(160);
-
-  async function drainCompiles() {
-    if (runningRef.current) return; // the active loop will pick up bodyRef itself
-    runningRef.current = true;
-    try {
-      let compiled: string | null = null;
-      while (compiled !== bodyRef.current && bodyRef.current.length > 0) {
-        const b: string = bodyRef.current;
-        const p: Problem = problemRef.current;
-        const r: RenderResult = await renderTex(b, p, "live", maxHRef.current);
-        compiled = b;
-        // A result from a problem that is no longer selected is not "behind",
-        // it is from a different document — drop it instead of showing it.
-        if (problemRef.current !== p) continue;
-        setLive((prev) => ({
-          png: r.png ?? prev.png,
-          stale: bodyRef.current !== b || !r.png,
-          error: r.png ? undefined : r.error,
-          ms: r.ms,
-        }));
+    const jobs = buildJobs(lines, infos);
+    void (async () => {
+      for (let i = 0; i < jobs.length; i++) {
+        if (genRef.current !== gen) return; // superseded — abandon
+        const job = jobs[i];
+        const maxH = job.type === "doc" ? (job.k === lines.length ? FINAL_DOC_MAX_H : DOC_MAX_H) : undefined;
+        const r = await renderTex(job.body, problem, `${prefix}${i}`, maxH);
+        if (genRef.current !== gen) return;
+        if (r.png) {
+          resultsRef.current.set(jobKey(job), r.png);
+          setTick((t) => t + 1);
+        }
       }
-    } finally {
-      runningRef.current = false;
-    }
-  }
+    })();
 
-  useEffect(() => {
-    bodyRef.current = body;
-    problemRef.current = problem;
-    // While playing, the strip above the typing block has ~160px; once finished
-    // the source block disappears and the strip gets the whole canvas.
-    maxHRef.current = finished ? 356 : 160;
-    if (body.length === 0) {
-      setLive({ stale: false, ms: 0 });
-      return;
-    }
-    setLive((prev) => ({ ...prev, stale: true }));
-    // The debounce only delays the first compile of a burst; once the drain loop
-    // is running it follows the typing continuously on its own.
-    const timer = setTimeout(() => void drainCompiles(), DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [body, problem, finished]);
+    // Retiring the generation on cleanup stops the loop at its next check —
+    // dev-mode double-mounts otherwise leave two loops compiling into dirs the
+    // newer generation's sweep is deleting out from under them.
+    return () => {
+      genRef.current++;
+    };
+  }, [problem, lines, infos]);
 
-  const diffAt = firstDifference(typed, goal);
-  const onTrack = diffAt === null;
-
+  // ---- input: consume-or-queue ----------------------------------------------
+  // Whatever Raycast reports as the bar's content is matched against the
+  // expected stream; the matching prefix is consumed (advancing pos and lines),
+  // only the unmatched tail goes back into the bar (behind the sentinel).
   function onType(next: string) {
-    if (startedAt.current === null && next.length > 0) startedAt.current = Date.now();
+    const raw = next.split(ZWSP).join("");
+    if (startedAt.current === null && raw.length > 0) startedAt.current = Date.now();
+    const added = raw.length - surplus.length;
+    if (added > 0) typedChars.current += added;
 
-    const added = next.length - typed.length;
-    if (added > 0) {
-      typedChars.current += added;
-      if (firstDifference(next, goal) === null) correctChars.current += added;
+    let stream = raw;
+    let d = doneCount;
+    let p = pos;
+    while (stream.length > 0 && d < lines.length) {
+      const goal = infos[d].goal;
+      if (p < goal.length && stream[0] === goal[p]) {
+        stream = stream.slice(1);
+        p++;
+        correctChars.current++;
+        combo.current++;
+        // Line finished: advance, skipping lines with nothing to type.
+        while (d < lines.length && p >= infos[d].goal.length) {
+          d++;
+          p = 0;
+        }
+        continue;
+      }
+      break;
     }
 
-    // Line complete: advance and adopt the reference line verbatim, so the
-    // accumulated document keeps the master's indentation.
-    if (next.trim() !== "" && next.trim() === target.trim()) {
-      setDoneCount((n) => n + 1);
-      setTyped("");
-      setTick((t) => t + 1);
-      return;
-    }
-    setTyped(next);
+    // Fresh keys that could not be consumed are mistakes.
+    if (added > 0 && stream.length > 0) combo.current = 0;
+
+    setDoneCount(d);
+    setPos(p);
+    setSurplus(stream);
+    // Alternate the sentinel count so the controlled searchText value is always
+    // new — otherwise React skips the update and the bar drifts out of sync.
+    setSentinels((s) => (s === 1 ? 2 : 1));
     setTick((t) => t + 1);
   }
 
   function reset() {
     setDoneCount(0);
-    setTyped("");
+    setPos(0);
+    setSurplus("");
     startedAt.current = null;
     correctChars.current = 0;
     typedChars.current = 0;
+    combo.current = 0;
     setTick((t) => t + 1);
   }
 
+  // ---- display state ---------------------------------------------------------
   const elapsedMs = startedAt.current ? Date.now() - startedAt.current : 0;
   const minutes = elapsedMs / 60000;
   // Monkeytype's convention: one "word" is five characters.
@@ -188,29 +152,64 @@ export default function Command() {
   const accuracy =
     typedChars.current > 0 ? Math.round((correctChars.current / typedChars.current) * 100) : 100;
 
-  const surface = useMemo(
-    () =>
-      renderSurface({
-        lines,
-        doneCount,
-        typed,
-        width: SURFACE_W,
-        height: SURFACE_H,
-        typesetPng: live.png ?? goalPng,
-        stale: live.stale,
-        ghost: !live.png && goalPng !== undefined,
-        stats: {
-          wpm,
-          accuracy,
-          doneLines: doneCount,
-          totalLines: lines.length,
-          seconds: elapsedMs / 1000,
-          finished,
-        },
-      }),
-    // tick keeps the surface in step with counters that live in refs
-    [lines, doneCount, typed, tick, live.png, live.stale, goalPng],
-  );
+  const surface = useMemo(() => {
+    const results = resultsRef.current;
+
+    // Newest cumulative document that is both reached and compiled.
+    let docPng: string | undefined;
+    for (let k = Math.min(doneCount, lines.length); k >= 1; k--) {
+      const hit = results.get(`doc:${k}`);
+      if (hit) {
+        docPng = hit;
+        break;
+      }
+    }
+
+    // The largest stable boundary at or behind the caret whose fragment landed.
+    let fragPng: string | undefined;
+    let fragBoundary = 0;
+    if (!finished) {
+      for (const b of infos[doneCount].boundaries) {
+        if (b > pos) break;
+        const hit = results.get(`frag:${doneCount}:${b}`);
+        if (hit) {
+          fragPng = hit;
+          fragBoundary = b;
+        }
+      }
+    }
+
+    const goal = finished ? "" : infos[doneCount].goal;
+    let nextGoal: string | undefined;
+    for (let li = doneCount + 1; li < lines.length; li++) {
+      if (infos[li].goal.length > 0) {
+        nextGoal = infos[li].goal;
+        break;
+      }
+    }
+
+    return renderSurface({
+      prose: problem.prose,
+      docPng,
+      fragPng,
+      greenSrc: goal.slice(fragBoundary, pos),
+      surplus,
+      graySrc: goal.slice(pos),
+      nextGoal,
+      width: SURFACE_W,
+      height: SURFACE_H,
+      stats: {
+        wpm,
+        accuracy,
+        combo: combo.current,
+        doneLines: doneCount,
+        totalLines: lines.length,
+        seconds: elapsedMs / 1000,
+        finished,
+      },
+    });
+    // tick keeps the surface in step with the results map and ref counters
+  }, [lines, infos, doneCount, pos, surplus, tick, finished, problem]);
 
   return (
     <Grid
@@ -219,10 +218,10 @@ export default function Command() {
       fit={Grid.Fit.Contain}
       inset={Grid.Inset.Small}
       filtering={false}
-      searchText={typed}
+      searchText={ZWSP.repeat(sentinels) + surplus}
       onSearchTextChange={onType}
-      searchBarPlaceholder={finished ? "完成！ ⌘R でリセット" : goal}
-      navigationTitle={`${problem.title} — ${doneCount}/${lines.length} 行`}
+      searchBarPlaceholder={finished ? "完成！ ⌘R でもう一回" : "ここに打つ"}
+      navigationTitle={`${problem.title} — ${doneCount}/${lines.length} 行${wpm ? ` ・ ${wpm} WPM` : ""}`}
       searchBarAccessory={
         <Grid.Dropdown
           tooltip="問題"
@@ -258,8 +257,11 @@ export default function Command() {
               shortcut={{ modifiers: ["cmd"], key: "arrowRight" }}
               onAction={() => {
                 if (finished) return;
-                setDoneCount((n) => n + 1);
-                setTyped("");
+                let d = doneCount + 1;
+                while (d < lines.length && infos[d].goal.length === 0) d++;
+                setDoneCount(d);
+                setPos(0);
+                setSurplus("");
               }}
             />
             <Action.CopyToClipboard title="お手本をコピー" content={problem.reference} />

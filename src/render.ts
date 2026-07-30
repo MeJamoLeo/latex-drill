@@ -1,9 +1,9 @@
 import { environment } from "@raycast/api";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { mkdirSync, writeFileSync, existsSync, readdirSync, unlinkSync, readFileSync } from "fs";
+import { mkdirSync, writeFileSync, existsSync, readdirSync, unlinkSync, readFileSync, rmSync } from "fs";
 import { join } from "path";
-import type { Problem } from "./problems";
+import type { Problem } from "./problems.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -87,11 +87,35 @@ export async function renderTex(
   }
 }
 
+/**
+ * Precompile runs tag their build dirs with a per-generation prefix; when a new
+ * generation starts, the previous one's dirs are dead weight. Sweep them.
+ */
+export function sweepStaleBuildDirs(keepPrefix: string): void {
+  const base = join(environment.supportPath, "build");
+  if (!existsSync(base)) return;
+  for (const name of readdirSync(base)) {
+    if (!name.startsWith("pc") || name.startsWith(keepPrefix)) continue;
+    try {
+      rmSync(join(base, name), { recursive: true, force: true });
+    } catch {
+      // Leftovers are harmless; the next sweep gets another chance.
+    }
+  }
+}
+
 /** Newest out-*.png in a build dir, or "" when there is none. */
 function newestPng(dir: string): string {
-  const names = readdirSync(dir)
-    .filter((f) => f.startsWith("out-") && f.endsWith(".png"))
-    .sort();
+  // The dir can vanish mid-flight when a newer generation sweeps it — that
+  // compile's result is unwanted anyway, so absence is a fine answer.
+  let names: string[];
+  try {
+    names = readdirSync(dir)
+      .filter((f) => f.startsWith("out-") && f.endsWith(".png"))
+      .sort();
+  } catch {
+    return "";
+  }
   return names.length > 0 ? join(dir, names[names.length - 1]) : "";
 }
 
@@ -108,7 +132,14 @@ function pngHeight(path: string): number {
 
 /** Keep the build dir from growing without bound during a long typing session. */
 function sweep(dir: string, keep: string) {
-  for (const f of readdirSync(dir)) {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    // A newer generation already removed the whole dir — nothing to sweep.
+    return;
+  }
+  for (const f of names) {
     if (!f.startsWith("out-") || !f.endsWith(".png")) continue;
     const p = join(dir, f);
     if (p === keep) continue;
