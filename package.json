@@ -1,0 +1,16 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "latex-proof-drill",
+  "title": "LaTeX Proof Drill",
+  "description": "Typeset English theorem proofs in LaTeX and compare against a reference rendering.",
+  "icon": "icon.png",
+  "author": "treo",
+  "categories": ["Developer Tools"],
+  "license": "MIT",
+  "commands": [
+    { "name": "realtime", "title": "Type Proof", "description": "Copy a proof line by line while it typesets live", "mode": "view" }
+  ],
+  "dependencies": { "@raycast/api": "^1.104.0", "@raycast/utils": "^2.2.1" },
+  "devDependencies": { "@types/node": "^22.13.10", "@types/react": "^19.0.10", "typescript": "^5.8.2" },
+  "scripts": { "dev": "ray develop", "build": "ray build -e dist" }
+}
